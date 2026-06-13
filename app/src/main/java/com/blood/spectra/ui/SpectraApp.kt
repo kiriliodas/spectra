@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.blood.spectra.SpectraViewModel
 import com.blood.spectra.ui.contrast.ContrastScreen
 import com.blood.spectra.ui.palettes.PalettesScreen
 import com.blood.spectra.ui.picker.PickerScreen
@@ -33,7 +34,7 @@ private enum class Tab(
 }
 
 @Composable
-fun SpectraApp() {
+fun SpectraApp(vm: SpectraViewModel) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val currentDest = backStack?.destination
@@ -77,7 +78,7 @@ fun SpectraApp() {
             startDestination = Tab.PICKER.route,
             modifier = Modifier.padding(padding),
         ) {
-            composable(Tab.PICKER.route) { PickerScreen() }
+            composable(Tab.PICKER.route) { PickerScreen(vm) }
             composable(Tab.PALETTES.route) { PalettesScreen() }
             composable(Tab.CONTRAST.route) { ContrastScreen() }
         }
