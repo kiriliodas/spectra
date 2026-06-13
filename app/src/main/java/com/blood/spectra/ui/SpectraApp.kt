@@ -2,11 +2,12 @@ package com.blood.spectra.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Contrast as ContrastOutlined
+import androidx.compose.material.icons.filled.Colorize
+import androidx.compose.material.icons.filled.InvertColors as InvertColorsFilled
+import androidx.compose.material.icons.filled.Palette as PaletteFilled
+import androidx.compose.material.icons.outlined.Colorize as ColorizeOutlined
+import androidx.compose.material.icons.outlined.InvertColors as InvertColorsOutlined
 import androidx.compose.material.icons.outlined.Palette as PaletteOutlined
-import androidx.compose.material.icons.rounded.Colorize
-import androidx.compose.material.icons.rounded.Contrast as ContrastRounded
-import androidx.compose.material.icons.rounded.Palette as PaletteRounded
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -34,9 +35,9 @@ private enum class Tab(
     val selectedIcon: ImageVector,
     val icon: ImageVector,
 ) {
-    PICKER("picker", "Picker", Icons.Rounded.Colorize, Icons.Rounded.Colorize),
-    PALETTES("palettes", "Palettes", PaletteRounded, PaletteOutlined),
-    CONTRAST("contrast", "Contrast", ContrastRounded, ContrastOutlined),
+    PICKER("picker", "Picker", Icons.Filled.Colorize, ColorizeOutlined),
+    PALETTES("palettes", "Palettes", PaletteFilled, PaletteOutlined),
+    CONTRAST("contrast", "Contrast", InvertColorsFilled, InvertColorsOutlined),
 }
 
 @Composable
