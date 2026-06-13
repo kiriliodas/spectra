@@ -1,13 +1,6 @@
 package com.blood.spectra.ui
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Colorize
-import androidx.compose.material.icons.filled.InvertColors as InvertColorsFilled
-import androidx.compose.material.icons.filled.Palette as PaletteFilled
-import androidx.compose.material.icons.outlined.Colorize as ColorizeOutlined
-import androidx.compose.material.icons.outlined.InvertColors as InvertColorsOutlined
-import androidx.compose.material.icons.outlined.Palette as PaletteOutlined
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -32,12 +25,11 @@ import com.blood.spectra.ui.picker.PickerScreen
 private enum class Tab(
     val route: String,
     val label: String,
-    val selectedIcon: ImageVector,
     val icon: ImageVector,
 ) {
-    PICKER("picker", "Picker", Icons.Filled.Colorize, ColorizeOutlined),
-    PALETTES("palettes", "Palettes", PaletteFilled, PaletteOutlined),
-    CONTRAST("contrast", "Contrast", InvertColorsFilled, InvertColorsOutlined),
+    PICKER("picker", "Picker", SpectraIcons.Eyedropper),
+    PALETTES("palettes", "Palettes", SpectraIcons.Palette),
+    CONTRAST("contrast", "Contrast", SpectraIcons.Contrast),
 }
 
 @Composable
@@ -65,7 +57,7 @@ fun SpectraApp() {
                         },
                         icon = {
                             Icon(
-                                if (selected) tab.selectedIcon else tab.icon,
+                                tab.icon,
                                 contentDescription = tab.label,
                             )
                         },
