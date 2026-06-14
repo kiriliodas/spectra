@@ -231,7 +231,7 @@ fun PickerScreen(
     }
 }
 
-@androidx.compose.material3.ExperimentalMaterial3Api
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun EyedropperSheet(onColorPicked: (ColorValue) -> Unit, onDismiss: () -> Unit) {
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -452,7 +452,7 @@ private fun readableOn(color: ColorValue): Color =
     if (color.luminance > 0.45) Color(0xFF111111) else Color(0xFFFFFFFF)
 
 /** Bottom sheet to add the current color to an existing palette or a new one. */
-@androidx.compose.material3.ExperimentalMaterial3Api
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun AddToPaletteSheet(
     palettes: List<com.blood.spectra.data.Palette>,
