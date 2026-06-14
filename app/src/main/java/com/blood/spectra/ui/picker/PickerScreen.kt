@@ -2,9 +2,12 @@ package com.blood.spectra.ui.picker
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -64,6 +71,7 @@ fun PickerScreen(
 
     fun copy(value: String) {
         clipboard.setText(AnnotatedString(value))
+        vm.rememberRecent()
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         scope.launch { snackbar.showSnackbar("Copied $value") }
     }
@@ -78,6 +86,10 @@ fun PickerScreen(
         ) {
             PreviewCard(color)
 
+            if (vm.recentColors.isNotEmpty()) {
+                RecentStrip(vm.recentColors, onPick = { vm.loadColor(it) })
+            }
+
             // 2D saturation/value canvas + hue bar
             val hsv = color.hsv
             SaturationValuePanel(
@@ -86,7 +98,6 @@ fun PickerScreen(
                 value = hsv.v,
                 onChange = { s, v -> vm.setSaturationValue(s, v) },
             )
-            // Hue bar (full rainbow)
             GradientSlider(
                 value = hsv.h / 360f,
                 trackColors = hueSpectrum(),
@@ -113,18 +124,15 @@ fun PickerScreen(
             )
             RangeHint("0–255")
 
-            SectionHeader("HSL")
+            // HSL — no hue slider here (the rainbow hue bar above already does
+            // hue); S and L give fine control of the other two channels.
+            SectionHeader("HSL — saturation & lightness")
             val hsl = color.hsl
-            ChannelSlider(
-                label = "H", normalized = hsl.h / 360f, valueText = "${hsl.h.roundToInt()}°",
-                trackColors = hueSpectrum(),
-                onNormalizedChange = { vm.setHue(it * 360f) },
-            )
             ChannelSlider(
                 label = "S", normalized = hsl.s, valueText = "${(hsl.s * 100).roundToInt()}%",
                 trackColors = listOf(
-                    ColorValue.fromHsl(hsl.h, 0f, hsl.l).let { Color(it.argb) },
-                    ColorValue.fromHsl(hsl.h, 1f, hsl.l).let { Color(it.argb) },
+                    Color(ColorValue.fromHsl(hsl.h, 0f, hsl.l).argb),
+                    Color(ColorValue.fromHsl(hsl.h, 1f, hsl.l).argb),
                 ),
                 onNormalizedChange = { vm.setSaturation(it) },
             )
@@ -132,7 +140,7 @@ fun PickerScreen(
                 label = "L", normalized = hsl.l, valueText = "${(hsl.l * 100).roundToInt()}%",
                 trackColors = listOf(
                     Color.Black,
-                    ColorValue.fromHsl(hsl.h, hsl.s, 0.5f).let { Color(it.argb) },
+                    Color(ColorValue.fromHsl(hsl.h, hsl.s, 0.5f).argb),
                     Color.White,
                 ),
                 onNormalizedChange = { vm.setLightness(it) },
@@ -157,7 +165,13 @@ fun PickerScreen(
             Spacer(Modifier.height(8.dp))
         }
 
-        SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
+        // Floats above the bottom nav bar.
+        SnackbarHost(
+            snackbar,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 12.dp),
+        )
     }
 }
 
@@ -181,7 +195,9 @@ private fun PreviewCard(color: ColorValue) {
                 modifier = Modifier
                     .fillMaxSize()
                     .background(animated)
-                    .padding(horizontal = 20.dp),
+                    // subtle inner border so very light colors don't vanish
+                    .border(1.dp, Color(0x14000000), MaterialTheme.shapes.large)
+                    .padding(horizontal = 18.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Row(
@@ -189,15 +205,65 @@ private fun PreviewCard(color: ColorValue) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Aa in black and white to communicate legibility
-                    Text("Aa", style = MaterialTheme.typography.headlineMedium, color = Color.Black)
+                    AaSample(textColor = Color.Black, bg = color)
                     Text(
                         ColorFormats.hex(color),
                         style = MonoValueLargeStyle,
                         color = readableOn(color),
                     )
-                    Text("Aa", style = MaterialTheme.typography.headlineMedium, color = Color.White)
+                    AaSample(textColor = Color.White, bg = color)
                 }
+            }
+        }
+    }
+}
+
+/** "Aa" sample with a WCAG pass/fail badge against the background color. */
+@Composable
+private fun AaSample(textColor: Color, bg: ColorValue) {
+    val sampleRgb = if (textColor == Color.Black) ColorValue.BLACK else ColorValue.WHITE
+    val ratio = ColorMath.contrastRatio(sampleRgb, ColorMath.compositeOver(bg, ColorValue.WHITE))
+    val passes = ratio >= 4.5 // AA for normal text
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Aa", style = MaterialTheme.typography.headlineMedium, color = textColor)
+        Spacer(Modifier.height(2.dp))
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = if (passes) Color(0xCC1B8A3A) else Color(0xCCC02626),
+        ) {
+            Text(
+                if (passes) "✓ AA" else "✗ AA",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentStrip(recents: List<ColorValue>, onPick: (ColorValue) -> Unit) {
+    Column {
+        Text(
+            "Recent",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 2.dp, bottom = 6.dp),
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp),
+        ) {
+            items(recents, key = { it.argb }) { c ->
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .checkerboard(cell = 6.dp)
+                        .background(Color(c.argb), CircleShape)
+                        .border(1.dp, Color(0x22000000), CircleShape)
+                        .clickable { onPick(c) },
+                )
             }
         }
     }
@@ -215,10 +281,10 @@ private fun HexField(text: String, isError: Boolean, onChange: (String) -> Unit)
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 56.dp)
-                .padding(start = 18.dp, end = 18.dp),
+                .padding(horizontal = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Decorative '#', tight against the value (no space).
+            // Non-editable decorative '#', tight against the value.
             Text(
                 text = "#",
                 style = MonoValueLargeStyle,
@@ -227,7 +293,7 @@ private fun HexField(text: String, isError: Boolean, onChange: (String) -> Unit)
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 if (text.removePrefix("#").isEmpty()) {
                     Text(
-                        "RRGGBB",
+                        "Enter hex…",
                         style = MonoValueLargeStyle,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     )

@@ -20,6 +20,17 @@ class SpectraViewModel : ViewModel() {
     var current by mutableStateOf(ColorValue(33, 150, 243)) // a pleasant default blue
         private set
 
+    /** Recently committed colors (most-recent first), in-memory for quick reuse. */
+    var recentColors by mutableStateOf<List<ColorValue>>(emptyList())
+        private set
+
+    /** Snapshot the current color into the recents strip (e.g. on copy/save). */
+    fun rememberRecent() {
+        val c = current
+        val deduped = recentColors.filter { it.argb != c.argb }
+        recentColors = (listOf(c) + deduped).take(12)
+    }
+
     /** Raw text in the HEX field; kept separate so partial typing doesn't fight us. */
     var hexInput by mutableStateOf(ColorFormats.hex(current, withHash = false))
         private set
