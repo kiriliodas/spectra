@@ -1,21 +1,33 @@
 package com.blood.spectra
 
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.blood.spectra.data.Palette
+import com.blood.spectra.data.PaletteRepository
 import com.blood.spectra.logic.ColorFormats
 import com.blood.spectra.logic.ColorValue
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
- * Shared app state. Holds the single "current" color the user is editing on the
- * Picker, so a color chosen anywhere flows across tabs later. Pure in-memory for
- * now; persistence (palettes) arrives in a later phase.
+ * Shared app state. Holds the "current" color the user is editing on the Picker
+ * (so it flows across tabs) plus the saved palettes (persisted on-device).
  *
  * RGBA is the source of truth. Slider edits update specific channels and the
  * derived HSL/HSV are recomputed from RGBA on read (no drift).
  */
-class SpectraViewModel : ViewModel() {
+class SpectraViewModel(app: Application) : AndroidViewModel(app) {
+
+    private val paletteRepo = PaletteRepository(app)
+
+    val palettes: StateFlow<List<Palette>> =
+        paletteRepo.palettes.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     var current by mutableStateOf(ColorValue(33, 150, 243)) // a pleasant default blue
         private set
@@ -23,6 +35,21 @@ class SpectraViewModel : ViewModel() {
     /** Recently committed colors (most-recent first), in-memory for quick reuse. */
     var recentColors by mutableStateOf<List<ColorValue>>(emptyList())
         private set
+
+    // ---- Contrast tab state --------------------------------------------------
+
+    var contrastFg by mutableStateOf(ColorValue(0x21, 0x21, 0x21))   // near-black text
+        private set
+    var contrastBg by mutableStateOf(ColorValue(255, 255, 255))      // white bg
+        private set
+
+    fun setContrastFg(c: ColorValue) { contrastFg = c }
+    fun setContrastBg(c: ColorValue) { contrastBg = c }
+    fun swapContrast() { val f = contrastFg; contrastFg = contrastBg; contrastBg = f }
+
+    /** Send the current Picker color into a contrast slot. */
+    fun useCurrentAsContrastFg() { contrastFg = current }
+    fun useCurrentAsContrastBg() { contrastBg = current }
 
     /** Snapshot the current color into the recents strip (e.g. on copy/save). */
     fun rememberRecent() {
@@ -92,4 +119,30 @@ class SpectraViewModel : ViewModel() {
         hexInput = filtered
         ColorFormats.parseHex(filtered)?.let { setColor(it, syncHex = false) }
     }
+
+    // ---- Palettes (persisted on-device) --------------------------------------
+
+    fun createPalette(name: String, onCreated: (String) -> Unit = {}) {
+        viewModelScope.launch { onCreated(paletteRepo.createPalette(name)) }
+    }
+
+    fun renamePalette(id: String, name: String) {
+        viewModelScope.launch { paletteRepo.renamePalette(id, name) }
+    }
+
+    fun deletePalette(id: String) {
+        viewModelScope.launch { paletteRepo.deletePalette(id) }
+    }
+
+    fun addColorToPalette(paletteId: String, argb: Long) {
+        viewModelScope.launch { paletteRepo.addColor(paletteId, argb) }
+    }
+
+    fun removeColorFromPalette(paletteId: String, argb: Long) {
+        viewModelScope.launch { paletteRepo.removeColor(paletteId, argb) }
+    }
+
+    /** Convenience: save the current Picker color to a palette. */
+    fun saveCurrentToPalette(paletteId: String) =
+        addColorToPalette(paletteId, current.argb)
 }

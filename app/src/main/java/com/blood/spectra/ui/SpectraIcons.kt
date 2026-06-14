@@ -45,6 +45,12 @@ object SpectraIcons {
         // filled right half
         fill("M12 4 a8 8 0 0 1 0 16 Z")
     }
+
+    /** Swap (two opposing horizontal arrows). */
+    val Swap: ImageVector = lineIcon("Swap") {
+        stroke("M4 9 H18 M15 6 L18 9 L15 12")
+        stroke("M20 15 H6 M9 12 L6 15 L9 18")
+    }
 }
 
 // ---- builder helpers --------------------------------------------------------

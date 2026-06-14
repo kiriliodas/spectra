@@ -79,8 +79,8 @@ fun SpectraApp(vm: SpectraViewModel) {
             modifier = Modifier.padding(padding),
         ) {
             composable(Tab.PICKER.route) { PickerScreen(vm) }
-            composable(Tab.PALETTES.route) { PalettesScreen() }
-            composable(Tab.CONTRAST.route) { ContrastScreen() }
+            composable(Tab.PALETTES.route) { PalettesScreen(vm) }
+            composable(Tab.CONTRAST.route) { ContrastScreen(vm) }
         }
     }
 }

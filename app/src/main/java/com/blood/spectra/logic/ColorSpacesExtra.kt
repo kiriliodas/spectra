@@ -5,8 +5,6 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * Additional color spaces used only for display/copy formats:

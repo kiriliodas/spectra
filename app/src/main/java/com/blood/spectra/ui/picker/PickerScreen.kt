@@ -31,9 +31,12 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,8 +53,10 @@ import com.blood.spectra.SpectraViewModel
 import com.blood.spectra.logic.ColorFormat
 import com.blood.spectra.logic.ColorFormats
 import com.blood.spectra.logic.ColorMath
+import com.blood.spectra.logic.ColorSchemes
 import com.blood.spectra.logic.ColorValue
 import com.blood.spectra.ui.common.CopyRow
+import com.blood.spectra.ui.common.SwatchStrip
 import com.blood.spectra.ui.common.checkerboard
 import com.blood.spectra.ui.theme.MonoValueLargeStyle
 import kotlinx.coroutines.launch
@@ -68,6 +73,8 @@ fun PickerScreen(
     val haptics = LocalHapticFeedback.current
 
     val color = vm.current
+    var showAddToPalette by remember { mutableStateOf(false) }
+    var showEyedropper by remember { mutableStateOf(false) }
 
     fun copy(value: String) {
         clipboard.setText(AnnotatedString(value))
@@ -84,7 +91,11 @@ fun PickerScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            PreviewCard(color)
+            PreviewCard(
+                color,
+                onAddToPalette = { showAddToPalette = true },
+                onEyedropper = { showEyedropper = true },
+            )
 
             if (vm.recentColors.isNotEmpty()) {
                 RecentStrip(vm.recentColors, onPick = { vm.loadColor(it) })
@@ -162,6 +173,31 @@ fun PickerScreen(
                 }
             }
 
+            SectionHeader("Tints & shades")
+            SwatchStrip(
+                colors = ColorSchemes.tintShadeRamp(color, steps = 4),
+                onPick = { vm.loadColor(it) },
+            )
+
+            SectionHeader("Harmonies")
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ColorSchemes.Harmony.entries.forEach { harmony ->
+                    Column {
+                        Text(
+                            harmony.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 2.dp, bottom = 4.dp),
+                        )
+                        SwatchStrip(
+                            colors = ColorSchemes.harmony(color, harmony),
+                            onPick = { vm.loadColor(it) },
+                            height = 44.dp,
+                        )
+                    }
+                }
+            }
+
             Spacer(Modifier.height(8.dp))
         }
 
@@ -173,10 +209,43 @@ fun PickerScreen(
                 .padding(bottom = 12.dp),
         )
     }
+
+    if (showAddToPalette) {
+        AddToPaletteSheet(
+            palettes = vm.palettes.collectAsState().value,
+            onAdd = { paletteId ->
+                vm.saveCurrentToPalette(paletteId)
+                showAddToPalette = false
+                scope.launch { snackbar.showSnackbar("Added to palette") }
+            },
+            onCreate = { name -> vm.createPalette(name) { id -> vm.saveCurrentToPalette(id) }; showAddToPalette = false },
+            onDismiss = { showAddToPalette = false },
+        )
+    }
+
+    if (showEyedropper) {
+        EyedropperSheet(
+            onColorPicked = { vm.loadColor(it) },
+            onDismiss = { showEyedropper = false },
+        )
+    }
+}
+
+@androidx.compose.material3.ExperimentalMaterial3Api
+@Composable
+private fun EyedropperSheet(onColorPicked: (ColorValue) -> Unit, onDismiss: () -> Unit) {
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        ImageEyedropperSheetContent(onColorPicked = onColorPicked)
+    }
 }
 
 @Composable
-private fun PreviewCard(color: ColorValue) {
+private fun PreviewCard(color: ColorValue, onAddToPalette: () -> Unit, onEyedropper: () -> Unit) {
     val animated by animateColorAsState(Color(color.argb), label = "preview")
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
@@ -212,6 +281,40 @@ private fun PreviewCard(color: ColorValue) {
                         color = readableOn(color),
                     )
                     AaSample(textColor = Color.White, bg = color)
+                }
+            }
+            // Eyedropper + add-to-palette buttons (top-right)
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Surface(
+                    onClick = onEyedropper,
+                    shape = CircleShape,
+                    color = Color(0x33FFFFFF),
+                    contentColor = readableOn(color),
+                    modifier = Modifier.size(34.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Icon(
+                            com.blood.spectra.ui.SpectraIcons.Eyedropper,
+                            contentDescription = "Pick color from image",
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+                Surface(
+                    onClick = onAddToPalette,
+                    shape = CircleShape,
+                    color = Color(0x33FFFFFF),
+                    contentColor = readableOn(color),
+                    modifier = Modifier.size(34.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("+", style = MaterialTheme.typography.titleLarge)
+                    }
                 }
             }
         }
@@ -347,3 +450,104 @@ private fun hueSpectrum(): List<Color> = listOf(0f, 60f, 120f, 180f, 240f, 300f,
 /** Pick black or white text for readability on [color] (per luminance). */
 private fun readableOn(color: ColorValue): Color =
     if (color.luminance > 0.45) Color(0xFF111111) else Color(0xFFFFFFFF)
+
+/** Bottom sheet to add the current color to an existing palette or a new one. */
+@androidx.compose.material3.ExperimentalMaterial3Api
+@Composable
+private fun AddToPaletteSheet(
+    palettes: List<com.blood.spectra.data.Palette>,
+    onAdd: (String) -> Unit,
+    onCreate: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var creating by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Text(
+            "Add to palette",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+        )
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            palettes.forEach { p ->
+                Surface(
+                    onClick = { onAdd(p.id) },
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 52.dp)
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(p.name, style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                        Text("${p.colors.size}", style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            if (creating) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BasicTextField(
+                            value = newName,
+                            onValueChange = { newName = it.take(40) },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            decorationBox = { inner ->
+                                if (newName.isEmpty()) Text("Palette name",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                                inner()
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text("Create", style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .clickable { if (newName.isNotBlank()) onCreate(newName) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp))
+                    }
+                }
+            } else {
+                Surface(
+                    onClick = { creating = true },
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("+ New palette", style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                }
+            }
+        }
+    }
+}
