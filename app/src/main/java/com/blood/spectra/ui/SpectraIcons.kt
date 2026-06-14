@@ -20,12 +20,12 @@ object SpectraIcons {
 
     /** Eyedropper / color picker. */
     val Eyedropper: ImageVector = lineIcon("Eyedropper") {
-        // dropper body (diagonal) + bulb at top-right
-        stroke("M4 20 L11 13")
-        stroke("M10.5 13.5 L15.5 8.5")
-        stroke("M13 6 L18 11 L19.2 9.8 a2 2 0 0 0 0 -2.8 L16 4 a2 2 0 0 0 -2.8 0 Z")
-        // small drop highlight
-        stroke("M4 20 L6 18")
+        // squarish bulb (top-right), rotated 45°
+        stroke("M14.5 4.5 L19.5 9.5 L17.5 11.5 L12.5 6.5 Z")
+        // barrel from bulb down to the tip (lower-left)
+        stroke("M13.5 7.5 L6 15 L5 19 L9 18 L16.5 10.5")
+        // tip drop
+        stroke("M5 19 L4 20")
     }
 
     /** Palette / swatches. */

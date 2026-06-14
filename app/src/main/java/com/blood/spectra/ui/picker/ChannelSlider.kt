@@ -6,28 +6,31 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.blood.spectra.ui.theme.MonoValueStyle
 
 /**
- * A labeled slider for one color channel. Shows the channel name on the left and
- * the current numeric value (monospace, so it doesn't shift) on the right.
+ * A labeled gradient slider for one color channel: name on the left, the
+ * gradient track in the middle (visually representing what it controls), and the
+ * value text (monospace) on the right.
+ *
+ * [normalized] is the thumb position 0f..1f; [onNormalizedChange] reports it.
  */
 @Composable
 fun ChannelSlider(
     label: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
+    normalized: Float,
     valueText: String,
-    onValueChange: (Float) -> Unit,
+    trackColors: List<Color>,
+    onNormalizedChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    showCheckerboard: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -35,19 +38,15 @@ fun ChannelSlider(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(28.dp),
+                modifier = Modifier.width(24.dp),
             )
             Spacer(Modifier.width(8.dp))
-            Slider(
-                value = value,
-                onValueChange = onValueChange,
-                valueRange = valueRange,
+            GradientSlider(
+                value = normalized,
+                trackColors = trackColors,
+                onValueChange = onNormalizedChange,
+                showCheckerboard = showCheckerboard,
                 modifier = Modifier.weight(1f),
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                ),
             )
             Spacer(Modifier.width(8.dp))
             Text(
@@ -55,7 +54,7 @@ fun ChannelSlider(
                 style = MonoValueStyle,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.End,
-                modifier = Modifier.width(48.dp),
+                modifier = Modifier.width(52.dp),
             )
         }
     }

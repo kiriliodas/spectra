@@ -5,11 +5,14 @@ import kotlin.math.roundToInt
 /** Output formats the user can copy. */
 enum class ColorFormat(val label: String) {
     HEX("HEX"),
-    HEXA("HEX + alpha"),
+    HEXA("HEXA"),
     RGB("RGB"),
     RGBA("RGBA"),
     HSL("HSL"),
     HSLA("HSLA"),
+    HWB("HWB"),
+    OKLCH("OKLCH"),
+    CMYK("CMYK"),
 }
 
 /** Hex parse + all string formatting. Pure functions. */
@@ -89,6 +92,9 @@ object ColorFormats {
         ColorFormat.RGBA -> rgba(c)
         ColorFormat.HSL -> hsl(c)
         ColorFormat.HSLA -> hsla(c)
+        ColorFormat.HWB -> ColorSpacesExtra.hwbString(c)
+        ColorFormat.OKLCH -> ColorSpacesExtra.oklchString(c)
+        ColorFormat.CMYK -> ColorSpacesExtra.cmykString(c)
     }
 
     private fun trimZeros(d: Double): String {

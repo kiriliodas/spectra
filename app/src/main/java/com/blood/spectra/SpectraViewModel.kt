@@ -59,6 +59,19 @@ class SpectraViewModel : ViewModel() {
         setColor(ColorValue.fromHsl(hsl.h, hsl.s, l, current.a))
     }
 
+    // ---- HSV edits (for the 2D saturation/value panel) -----------------------
+
+    fun setSaturationValue(s: Float, v: Float) {
+        val hsv = current.hsv
+        setColor(ColorValue.fromHsv(hsv.h, s, v, current.a))
+    }
+
+    /** Hue edit that preserves HSV saturation/value (used by the hue bar). */
+    fun setHsvHue(h: Float) {
+        val hsv = current.hsv
+        setColor(ColorValue.fromHsv(h, hsv.s, hsv.v, current.a))
+    }
+
     // ---- HEX field -----------------------------------------------------------
 
     fun onHexChange(raw: String) {

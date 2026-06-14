@@ -12,12 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -36,11 +36,13 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.blood.spectra.SpectraViewModel
 import com.blood.spectra.logic.ColorFormat
 import com.blood.spectra.logic.ColorFormats
+import com.blood.spectra.logic.ColorMath
 import com.blood.spectra.logic.ColorValue
 import com.blood.spectra.ui.common.CopyRow
 import com.blood.spectra.ui.common.checkerboard
@@ -59,9 +61,8 @@ fun PickerScreen(
     val haptics = LocalHapticFeedback.current
 
     val color = vm.current
-    val composeColor = Color(color.argb)
 
-    fun copy(label: String, value: String) {
+    fun copy(value: String) {
         clipboard.setText(AnnotatedString(value))
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         scope.launch { snackbar.showSnackbar("Copied $value") }
@@ -73,65 +74,90 @@ fun PickerScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             PreviewCard(color)
 
-            HexField(
-                text = vm.hexInput,
-                isError = vm.hexError,
-                onChange = vm::onHexChange,
+            // 2D saturation/value canvas + hue bar
+            val hsv = color.hsv
+            SaturationValuePanel(
+                hue = hsv.h,
+                saturation = hsv.s,
+                value = hsv.v,
+                onChange = { s, v -> vm.setSaturationValue(s, v) },
+            )
+            // Hue bar (full rainbow)
+            GradientSlider(
+                value = hsv.h / 360f,
+                trackColors = hueSpectrum(),
+                onValueChange = { vm.setHsvHue(it * 360f) },
             )
 
-            // RGB sliders
-            SectionLabel("RGB")
-            ChannelSlider(
-                label = "R", value = color.r.toFloat(), valueRange = 0f..255f,
-                valueText = color.r.toString(), onValueChange = { vm.setR(it.roundToInt()) },
-            )
-            ChannelSlider(
-                label = "G", value = color.g.toFloat(), valueRange = 0f..255f,
-                valueText = color.g.toString(), onValueChange = { vm.setG(it.roundToInt()) },
-            )
-            ChannelSlider(
-                label = "B", value = color.b.toFloat(), valueRange = 0f..255f,
-                valueText = color.b.toString(), onValueChange = { vm.setB(it.roundToInt()) },
-            )
+            HexField(text = vm.hexInput, isError = vm.hexError, onChange = vm::onHexChange)
 
-            // HSL sliders
-            SectionLabel("HSL")
+            SectionHeader("RGB")
+            ChannelSlider(
+                label = "R", normalized = color.r / 255f, valueText = "${color.r}",
+                trackColors = listOf(Color(0, color.g, color.b), Color(255, color.g, color.b)),
+                onNormalizedChange = { vm.setR((it * 255).roundToInt()) },
+            )
+            ChannelSlider(
+                label = "G", normalized = color.g / 255f, valueText = "${color.g}",
+                trackColors = listOf(Color(color.r, 0, color.b), Color(color.r, 255, color.b)),
+                onNormalizedChange = { vm.setG((it * 255).roundToInt()) },
+            )
+            ChannelSlider(
+                label = "B", normalized = color.b / 255f, valueText = "${color.b}",
+                trackColors = listOf(Color(color.r, color.g, 0), Color(color.r, color.g, 255)),
+                onNormalizedChange = { vm.setB((it * 255).roundToInt()) },
+            )
+            RangeHint("0–255")
+
+            SectionHeader("HSL")
             val hsl = color.hsl
             ChannelSlider(
-                label = "H", value = hsl.h, valueRange = 0f..360f,
-                valueText = "${hsl.h.roundToInt()}°", onValueChange = { vm.setHue(it) },
+                label = "H", normalized = hsl.h / 360f, valueText = "${hsl.h.roundToInt()}°",
+                trackColors = hueSpectrum(),
+                onNormalizedChange = { vm.setHue(it * 360f) },
             )
             ChannelSlider(
-                label = "S", value = hsl.s, valueRange = 0f..1f,
-                valueText = "${(hsl.s * 100).roundToInt()}%", onValueChange = { vm.setSaturation(it) },
+                label = "S", normalized = hsl.s, valueText = "${(hsl.s * 100).roundToInt()}%",
+                trackColors = listOf(
+                    ColorValue.fromHsl(hsl.h, 0f, hsl.l).let { Color(it.argb) },
+                    ColorValue.fromHsl(hsl.h, 1f, hsl.l).let { Color(it.argb) },
+                ),
+                onNormalizedChange = { vm.setSaturation(it) },
             )
             ChannelSlider(
-                label = "L", value = hsl.l, valueRange = 0f..1f,
-                valueText = "${(hsl.l * 100).roundToInt()}%", onValueChange = { vm.setLightness(it) },
+                label = "L", normalized = hsl.l, valueText = "${(hsl.l * 100).roundToInt()}%",
+                trackColors = listOf(
+                    Color.Black,
+                    ColorValue.fromHsl(hsl.h, hsl.s, 0.5f).let { Color(it.argb) },
+                    Color.White,
+                ),
+                onNormalizedChange = { vm.setLightness(it) },
             )
 
-            // Alpha
-            SectionLabel("Alpha")
+            SectionHeader("Alpha")
             ChannelSlider(
-                label = "A", value = color.a, valueRange = 0f..1f,
-                valueText = "${(color.a * 100).roundToInt()}%", onValueChange = { vm.setAlpha(it) },
+                label = "A", normalized = color.a, valueText = "${(color.a * 100).roundToInt()}%",
+                trackColors = listOf(Color(color.r, color.g, color.b, 0), Color(color.r, color.g, color.b)),
+                showCheckerboard = true,
+                onNormalizedChange = { vm.setAlpha(it) },
             )
 
-            // Format readout
-            SectionLabel("Formats — tap to copy")
-            FormatList(color, onCopy = ::copy)
+            SectionHeader("Formats — tap to copy")
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                ColorFormat.entries.forEach { fmt ->
+                    val value = ColorFormats.format(color, fmt)
+                    CopyRow(label = fmt.label, value = value, onClick = { copy(value) })
+                }
+            }
 
             Spacer(Modifier.height(8.dp))
         }
 
-        SnackbarHost(
-            snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
+        SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -146,7 +172,7 @@ private fun PreviewCard(color: ColorValue) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(160.dp)
+                .height(150.dp)
                 .padding(10.dp)
                 .clip(MaterialTheme.shapes.large)
                 .checkerboard(),
@@ -154,14 +180,24 @@ private fun PreviewCard(color: ColorValue) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(animated),
+                    .background(animated)
+                    .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = ColorFormats.hex(color),
-                    style = MonoValueLargeStyle,
-                    color = readableOn(color),
-                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Aa in black and white to communicate legibility
+                    Text("Aa", style = MaterialTheme.typography.headlineMedium, color = Color.Black)
+                    Text(
+                        ColorFormats.hex(color),
+                        style = MonoValueLargeStyle,
+                        color = readableOn(color),
+                    )
+                    Text("Aa", style = MaterialTheme.typography.headlineMedium, color = Color.White)
+                }
             }
         }
     }
@@ -179,17 +215,17 @@ private fun HexField(text: String, isError: Boolean, onChange: (String) -> Unit)
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 56.dp)
-                .padding(horizontal = 18.dp),
+                .padding(start = 18.dp, end = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Decorative '#', tight against the value (no space).
             Text(
                 text = "#",
                 style = MonoValueLargeStyle,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.width(6.dp))
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                if (text.isEmpty()) {
+                if (text.removePrefix("#").isEmpty()) {
                     Text(
                         "RRGGBB",
                         style = MonoValueLargeStyle,
@@ -214,23 +250,32 @@ private fun HexField(text: String, isError: Boolean, onChange: (String) -> Unit)
 }
 
 @Composable
-private fun FormatList(color: ColorValue, onCopy: (String, String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        ColorFormat.entries.forEach { fmt ->
-            val value = ColorFormats.format(color, fmt)
-            CopyRow(label = fmt.label, value = value, onClick = { onCopy(fmt.label, value) })
-        }
+private fun SectionHeader(text: String) {
+    Column {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(start = 2.dp, top = 10.dp, bottom = 2.dp),
+        )
     }
 }
 
 @Composable
-private fun SectionLabel(text: String) {
+private fun RangeHint(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        modifier = Modifier.padding(start = 32.dp),
     )
+}
+
+/** The 7-stop rainbow used by hue tracks. */
+private fun hueSpectrum(): List<Color> = listOf(0f, 60f, 120f, 180f, 240f, 300f, 360f).map {
+    val (r, g, b) = ColorMath.hsvToRgb(it, 1f, 1f)
+    Color(r, g, b)
 }
 
 /** Pick black or white text for readability on [color] (per luminance). */
