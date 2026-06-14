@@ -142,6 +142,16 @@ class SpectraViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { paletteRepo.removeColor(paletteId, argb) }
     }
 
+    fun moveColorInPalette(paletteId: String, index: Int, delta: Int) {
+        viewModelScope.launch { paletteRepo.moveColor(paletteId, index, delta) }
+    }
+
+    /** Load two palette colors into the Contrast tab (text = first, bg = second). */
+    fun loadPairIntoContrast(textArgb: Long, bgArgb: Long) {
+        contrastFg = ColorValue.fromArgb(textArgb)
+        contrastBg = ColorValue.fromArgb(bgArgb)
+    }
+
     /** Convenience: save the current Picker color to a palette. */
     fun saveCurrentToPalette(paletteId: String) =
         addColorToPalette(paletteId, current.argb)

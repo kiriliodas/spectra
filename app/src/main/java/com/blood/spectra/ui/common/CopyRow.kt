@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.blood.spectra.ui.morph.pressSqueeze
 import com.blood.spectra.ui.theme.MonoValueStyle
@@ -83,12 +82,11 @@ fun CopyRow(
                 modifier = Modifier.width(54.dp),
             )
             Spacer(Modifier.width(8.dp))
-            Text(
+            // Auto-shrinks so long values (e.g. CMYK) are never truncated.
+            AutoSizeText(
                 text = value,
                 style = MonoValueStyle,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(8.dp))

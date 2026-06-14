@@ -43,7 +43,11 @@ class PaletteRepository(private val context: Context) {
 
     suspend fun createPalette(name: String): String {
         val id = UUID.randomUUID().toString()
-        update { it + Palette(id, name.ifBlank { "Palette" }, emptyList(), now()) }
+        update { list ->
+            // Auto-number unnamed palettes: "Palette 1", "Palette 2", ...
+            val finalName = name.ifBlank { "Palette ${list.size + 1}" }
+            list + Palette(id, finalName, emptyList(), now())
+        }
         return id
     }
 
@@ -65,6 +69,19 @@ class PaletteRepository(private val context: Context) {
         list.map { p ->
             if (p.id != paletteId) p
             else p.copy(colors = p.colors.filterNot { it.argb == argb }, updatedAt = now())
+        }
+    }
+
+    /** Move the color at [index] by [delta] positions (e.g. -1 up, +1 down). */
+    suspend fun moveColor(paletteId: String, index: Int, delta: Int) = update { list ->
+        list.map { p ->
+            if (p.id != paletteId) return@map p
+            val target = index + delta
+            if (index !in p.colors.indices || target !in p.colors.indices) return@map p
+            val mutable = p.colors.toMutableList()
+            val item = mutable.removeAt(index)
+            mutable.add(target, item)
+            p.copy(colors = mutable, updatedAt = now())
         }
     }
 

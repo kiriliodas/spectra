@@ -62,7 +62,7 @@ fun ContrastScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Live sample preview
-        SamplePreview(fg = Color(effectiveFg.argb), bg = Color(bg.argb))
+        SamplePreview(fg = Color(effectiveFg.argb), bg = Color(bg.argb), ratio = ratio)
 
         // Big ratio
         RatioCard(ratio)
@@ -71,6 +71,10 @@ fun ContrastScreen(
         ResultMatrix(ratio)
 
         // Foreground / background editors with a swap button between
+        var swaps by remember { mutableStateOf(0) }
+        val swapRotation by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = swaps * 180f, label = "swapRot",
+        )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -78,19 +82,23 @@ fun ContrastScreen(
             ColorSlot(
                 title = "Text",
                 color = fg,
+                pickerColor = vm.current,
                 onColor = vm::updateContrastFg,
                 onUseCurrent = vm::useCurrentAsContrastFg,
                 modifier = Modifier.weight(1f),
             )
-            MorphIconButton(onClick = vm::swapContrast, size = 48.dp) {
+            MorphIconButton(onClick = { vm.swapContrast(); swaps++ }, size = 48.dp) {
                 androidx.compose.material3.Icon(
                     SpectraIcons.Swap, contentDescription = "Swap text and background",
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier
+                        .size(22.dp)
+                        .androidx_graphicsLayerRotate(swapRotation),
                 )
             }
             ColorSlot(
                 title = "Background",
                 color = bg,
+                pickerColor = vm.current,
                 onColor = vm::updateContrastBg,
                 onUseCurrent = vm::useCurrentAsContrastBg,
                 modifier = Modifier.weight(1f),
@@ -101,36 +109,61 @@ fun ContrastScreen(
     }
 }
 
+private fun Modifier.androidx_graphicsLayerRotate(deg: Float): Modifier =
+    this.then(androidx.compose.ui.graphics.graphicsLayer { rotationZ = deg })
+
 @Composable
-private fun SamplePreview(fg: Color, bg: Color) {
+private fun SamplePreview(fg: Color, bg: Color, ratio: Double) {
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.extraLarge)
                 .padding(4.dp)
                 .clip(MaterialTheme.shapes.large)
                 .background(bg)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                // persistent border so the card's bounds show even on white bg
+                .border(1.dp, Color(0x1A000000), MaterialTheme.shapes.large),
         ) {
-            Text("Large heading", color = fg, style = MaterialTheme.typography.headlineSmall)
-            Text(
-                "Body text — the quick brown fox jumps over the lazy dog. 0123456789",
-                color = fg,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Surface(color = fg, shape = RoundedCornerShape(50)) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("Large heading", color = fg, style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Button",
-                    color = bg,
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    "Body text — the quick brown fox jumps over the lazy dog. 0123456789",
+                    color = fg,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
+                Surface(color = fg, shape = RoundedCornerShape(50)) {
+                    Text(
+                        "Button",
+                        color = bg,
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+            }
+            // When the two colors are basically indistinguishable, say so.
+            if (ratio < 1.2) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color(0xCC000000),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(10.dp),
+                ) {
+                    Text(
+                        "Text is invisible at this contrast",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    )
+                }
             }
         }
     }
@@ -220,6 +253,7 @@ private fun Badge(label: String, pass: Boolean) {
 private fun ColorSlot(
     title: String,
     color: ColorValue,
+    pickerColor: ColorValue,
     onColor: (ColorValue) -> Unit,
     onUseCurrent: () -> Unit,
     modifier: Modifier = Modifier,
@@ -265,7 +299,7 @@ private fun ColorSlot(
                     )
                 }
             }
-            // use current picker color
+            // use current picker color — with a mini-swatch of what that is
             Surface(
                 onClick = onUseCurrent,
                 shape = RoundedCornerShape(50),
@@ -273,14 +307,23 @@ private fun ColorSlot(
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(
-                    "Use picker color",
-                    style = MaterialTheme.typography.labelMedium,
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(pickerColor.argb))
+                            .border(1.dp, Color(0x33000000), RoundedCornerShape(50)),
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    Text("Use picker color", style = MaterialTheme.typography.labelMedium)
+                }
             }
         }
     }

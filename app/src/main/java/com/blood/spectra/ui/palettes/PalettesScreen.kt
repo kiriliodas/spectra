@@ -68,10 +68,16 @@ fun PalettesScreen(
                         onToggle = { expandedId = if (expandedId == palette.id) null else palette.id },
                         onPickColor = { vm.loadColor(it) },
                         onRemoveColor = { vm.removeColorFromPalette(palette.id, it.argb) },
+                        onMoveColor = { index, delta -> vm.moveColorInPalette(palette.id, index, delta) },
                         onDelete = { vm.deletePalette(palette.id); expandedId = null },
                         onRename = { vm.renamePalette(palette.id, it) },
                         onExport = { shareText(context, exportPalette(palette)) },
                         onAddCurrent = { vm.saveCurrentToPalette(palette.id) },
+                        onCheckContrast = {
+                            if (palette.colors.size >= 2) {
+                                vm.loadPairIntoContrast(palette.colors[0].argb, palette.colors[1].argb)
+                            }
+                        },
                     )
                 }
                 item { Spacer(Modifier.height(72.dp)) }
@@ -119,10 +125,12 @@ private fun PaletteCard(
     onToggle: () -> Unit,
     onPickColor: (ColorValue) -> Unit,
     onRemoveColor: (ColorValue) -> Unit,
+    onMoveColor: (index: Int, delta: Int) -> Unit,
     onDelete: () -> Unit,
     onRename: (String) -> Unit,
     onExport: () -> Unit,
     onAddCurrent: () -> Unit,
+    onCheckContrast: () -> Unit,
 ) {
     var showRename by remember { mutableStateOf(false) }
 
@@ -181,9 +189,9 @@ private fun PaletteCard(
 
             if (expanded) {
                 Spacer(Modifier.height(12.dp))
-                // detailed grid: each color tappable to load, long-press to remove
+                // detailed list: tap swatch to load; reorder with ↑/↓; remove
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    palette.colors.forEach { sc ->
+                    palette.colors.forEachIndexed { index, sc ->
                         val cv = ColorValue.fromArgb(sc.argb)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
@@ -202,14 +210,16 @@ private fun PaletteCard(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.weight(1f),
                             )
+                            ReorderButton("↑", enabled = index > 0) { onMoveColor(index, -1) }
+                            ReorderButton("↓", enabled = index < palette.colors.lastIndex) { onMoveColor(index, +1) }
                             Text(
-                                "Remove",
-                                style = MaterialTheme.typography.labelMedium,
+                                "✕",
+                                style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
                                     .clickable { onRemoveColor(cv) }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
                             )
                         }
                     }
@@ -225,6 +235,10 @@ private fun PaletteCard(
                     ActionChip("Rename", { showRename = true }, Modifier.weight(1f))
                     ActionChip("Delete", onDelete, Modifier.weight(1f), danger = true)
                 }
+                if (palette.colors.size >= 2) {
+                    Spacer(Modifier.height(8.dp))
+                    ActionChip("Check first two in Contrast", onCheckContrast, Modifier.fillMaxWidth())
+                }
             }
         }
     }
@@ -237,6 +251,20 @@ private fun PaletteCard(
             onDismiss = { showRename = false },
         )
     }
+}
+
+@Composable
+private fun ReorderButton(symbol: String, enabled: Boolean, onClick: () -> Unit) {
+    Text(
+        symbol,
+        style = MaterialTheme.typography.titleMedium,
+        color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant
+        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .then(if (enabled) Modifier.clickable { onClick() } else Modifier)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    )
 }
 
 @Composable
@@ -300,7 +328,7 @@ private fun EmptyState() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(start = 32.dp, end = 32.dp, top = 32.dp, bottom = 96.dp), // clear the FAB
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

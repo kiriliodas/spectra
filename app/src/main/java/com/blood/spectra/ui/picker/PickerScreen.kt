@@ -120,17 +120,17 @@ fun PickerScreen(
             SectionHeader("RGB")
             ChannelSlider(
                 label = "R", normalized = color.r / 255f, valueText = "${color.r}",
-                trackColors = listOf(Color(0, color.g, color.b), Color(255, color.g, color.b)),
+                trackColors = listOf(Color(0, color.g, color.b), Color(128, color.g, color.b), Color(255, color.g, color.b)),
                 onNormalizedChange = { vm.setR((it * 255).roundToInt()) },
             )
             ChannelSlider(
                 label = "G", normalized = color.g / 255f, valueText = "${color.g}",
-                trackColors = listOf(Color(color.r, 0, color.b), Color(color.r, 255, color.b)),
+                trackColors = listOf(Color(color.r, 0, color.b), Color(color.r, 128, color.b), Color(color.r, 255, color.b)),
                 onNormalizedChange = { vm.setG((it * 255).roundToInt()) },
             )
             ChannelSlider(
                 label = "B", normalized = color.b / 255f, valueText = "${color.b}",
-                trackColors = listOf(Color(color.r, color.g, 0), Color(color.r, color.g, 255)),
+                trackColors = listOf(Color(color.r, color.g, 0), Color(color.r, color.g, 128), Color(color.r, color.g, 255)),
                 onNormalizedChange = { vm.setB((it * 255).roundToInt()) },
             )
             RangeHint("0–255")
@@ -174,9 +174,16 @@ fun PickerScreen(
             }
 
             SectionHeader("Tints & shades")
+            Text(
+                "Tap to use · long-press to copy",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.padding(start = 2.dp, bottom = 2.dp),
+            )
             SwatchStrip(
                 colors = ColorSchemes.tintShadeRamp(color, steps = 4),
                 onPick = { vm.loadColor(it) },
+                onLongPress = { copy(ColorFormats.hex(it)) },
             )
 
             SectionHeader("Harmonies")
@@ -192,6 +199,7 @@ fun PickerScreen(
                         SwatchStrip(
                             colors = ColorSchemes.harmony(color, harmony),
                             onPick = { vm.loadColor(it) },
+                            onLongPress = { copy(ColorFormats.hex(it)) },
                             height = 44.dp,
                         )
                     }
