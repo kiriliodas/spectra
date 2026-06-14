@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -92,7 +93,7 @@ fun ContrastScreen(
                     SpectraIcons.Swap, contentDescription = "Swap text and background",
                     modifier = Modifier
                         .size(22.dp)
-                        .androidx_graphicsLayerRotate(swapRotation),
+                        .graphicsLayer { rotationZ = swapRotation },
                 )
             }
             ColorSlot(
@@ -108,9 +109,6 @@ fun ContrastScreen(
         Spacer(Modifier.height(8.dp))
     }
 }
-
-private fun Modifier.androidx_graphicsLayerRotate(deg: Float): Modifier =
-    this.then(androidx.compose.ui.graphics.graphicsLayer { rotationZ = deg })
 
 @Composable
 private fun SamplePreview(fg: Color, bg: Color, ratio: Double) {
