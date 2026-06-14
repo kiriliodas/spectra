@@ -43,8 +43,8 @@ class SpectraViewModel(app: Application) : AndroidViewModel(app) {
     var contrastBg by mutableStateOf(ColorValue(255, 255, 255))      // white bg
         private set
 
-    fun setContrastFg(c: ColorValue) { contrastFg = c }
-    fun setContrastBg(c: ColorValue) { contrastBg = c }
+    fun updateContrastFg(c: ColorValue) { contrastFg = c }
+    fun updateContrastBg(c: ColorValue) { contrastBg = c }
     fun swapContrast() { val f = contrastFg; contrastFg = contrastBg; contrastBg = f }
 
     /** Send the current Picker color into a contrast slot. */

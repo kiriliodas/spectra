@@ -78,7 +78,7 @@ fun ContrastScreen(
             ColorSlot(
                 title = "Text",
                 color = fg,
-                onColor = vm::setContrastFg,
+                onColor = vm::updateContrastFg,
                 onUseCurrent = vm::useCurrentAsContrastFg,
                 modifier = Modifier.weight(1f),
             )
@@ -91,7 +91,7 @@ fun ContrastScreen(
             ColorSlot(
                 title = "Background",
                 color = bg,
-                onColor = vm::setContrastBg,
+                onColor = vm::updateContrastBg,
                 onUseCurrent = vm::useCurrentAsContrastBg,
                 modifier = Modifier.weight(1f),
             )
